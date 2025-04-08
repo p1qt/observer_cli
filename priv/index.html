@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Observer CLI Web</title>
+    <link rel="stylesheet" href="/assets/xterm.css" />
+    <style>
+        body,
+        html {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #terminal-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .xterm {
+            height: 100%;
+        }
+
+        .xterm-viewport {
+            overflow-y: hidden !important;
+        }
+
+        .terminal {
+            width: 100% !important;
+        }
+
+        .terminal .xterm-screen {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="terminal-container"></div>
+
+    <script src="/assets/xterm.js"></script>
+    <script src="/assets/xterm-addon-fit.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const terminalContainer = document.getElementById('terminal-container');
+
+            const term = new Terminal({
+                cursorBlink: true,
+                fontSize: 14,
+                lineHeight: 1.2,
+                fontFamily: 'Consolas, monospace',
+                convertEol: true,
+                disableStdin: false,
+                allowTransparency: false,
+                scrollback: 1000,
+                theme: {
+                    foreground: '#F8F8F8',
+                    background: '#000000',
+                    black: '#000000',
+                    red: '#CC0000',
+                    green: '#4E9A06',
+                    yellow: '#C4A000',
+                    blue: '#3465A4',
+                    magenta: '#75507B',
+                    cyan: '#06989A',
+                    white: '#D3D7CF',
+                    brightBlack: '#555753',
+                    brightRed: '#EF2929',
+                    brightGreen: '#8AE234',
+                    brightYellow: '#FCE94F',
+                    brightBlue: '#729FCF',
+                    brightMagenta: '#AD7FA8',
+                    brightCyan: '#34E2E2',
+                    brightWhite: '#EEEEEC'
+                }
+            });
+
+            const fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+
+            term.open(terminalContainer);
+
+            setTimeout(() => {
+                fitAddon.fit();
+                term.focus();
+            }, 100);
+
+            const socket = new WebSocket(`ws://${window.location.host}/ws`);
+
+            socket.onopen = () => {
+                term.clear();
+                term.focus();
+            };
+
+            socket.onclose = () => {
+                term.write('\r\n\x1b[31mConnection closed, please refresh the page to reconnect\x1b[0m\r\n');
+            };
+
+            socket.onerror = (error) => {
+                term.write('\r\n\x1b[31mConnection error, please refresh the page to reconnect\x1b[0m\r\n');
+            };
+
+            socket.onmessage = (event) => {
+                term.write(event.data);
+            };
+
+            term.onData((data) => {
+                if (socket.readyState === WebSocket.OPEN) {
+                    socket.send(data);
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                try {
+                    fitAddon.fit();
+                } catch (e) {
+                    console.error('Error resizing terminal', e);
+                }
+            });
+
+            terminalContainer.addEventListener('click', () => {
+                term.focus();
+            });
+
+            window.addEventListener('focus', () => {
+                term.focus();
+            });
+        });
+    </script>
+</body>
+
+</html>
